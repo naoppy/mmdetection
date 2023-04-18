@@ -599,8 +599,8 @@ class MultiInstanceBBoxHead(BBoxHead):
         ordered_bboxes = bboxes[order]
         roi_idx = ordered_bboxes[:, -1]
 
-        keep = torch.ones(len(ordered_bboxes)) == 1
-        ruler = torch.arange(len(ordered_bboxes))
+        keep = torch.ones(len(ordered_bboxes)).to(bboxes.device) == 1
+        ruler = torch.arange(len(ordered_bboxes)).to(bboxes.device)
         while ruler.shape[0] > 0:
             basement = ruler[0]
             ruler = ruler[1:]
@@ -611,12 +611,28 @@ class MultiInstanceBBoxHead(BBoxHead):
             overlap = bbox_overlaps(basement_bbox, ruler_bbox)
             indices = torch.where(overlap > iou_threshold)[1]
             loc = torch.where(roi_idx[ruler][indices] == idx)
+
+            print(bboxes.device) # cuda
+            print(bboxes)
+            print(scores.device) # cuda
+            print(scores)
+            print(keep.device) # cpu -> cuda
+            print(keep)
+            print(ruler.device) # cpu -> cuda
+            print(ruler)
+            print(indices) # cuda
+            print(loc) # tuple of cuda
+            
+
             # the mask won't change in the step
             mask = keep[ruler[indices][loc]]
+            print(mask) # cpu -> cuda
             keep[ruler[indices]] = False
             keep[ruler[indices][loc][mask]] = True
             ruler[~keep[ruler]] = -1
             ruler = ruler[ruler > 0]
+
+            
 
         keep = keep[order.sort()[1]]
         return bboxes[keep][:max_num, :], scores[keep][:max_num]
